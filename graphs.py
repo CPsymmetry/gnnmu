@@ -12,22 +12,13 @@ class INModel(snt.Module):
         size = 128
         
         self.gn_module = gn.modules.GraphNetwork(
-           edge_model_fn=lambda: snt.nets.MLP([size, size, 2]),
-           node_model_fn=lambda: snt.nets.MLP([size, size, 0]),
-           global_model_fn=lambda: snt.nets.MLP([size, size,0])        
+           edge_model_fn=lambda: snt.nets.MLP([size, size, 0]),
+           node_model_fn=lambda: snt.nets.MLP([size, size, 7]),
+           global_model_fn=lambda: snt.nets.MLP([size, size,2])        
            )          
        
     def __call__(self, data):
-        """
-        Takes data and parses it through the graph network
-        
-        data: dictionary, [formatted_graphs, node_system, true_path]
-        """
-        #print(f"dgraph data {data['dgraphs']}")
-        print(data['dgraphs'])
         gnn = self.gn_module(data['dgraphs'])
-        
-        
         return gnn
     
     
