@@ -11,9 +11,9 @@ from hirot import multi_lkth
            'mccha':[],  #charge
            'mcgst':[],  #generation
            'mcpdg':[],  #pdg
-           'mcpp':[],   #momentum
+           'mcppt':[],   #momentum
            'mcphi':[],  #phi
-           'mclambda':[]#lambda
+           'mcl':[]     #lambda
            }
     
     ltr = {'tstnl':[],  #tan(lambda)
@@ -21,15 +21,17 @@ from hirot import multi_lkth
            'tsphi':[],  #phi
            'tsdze':[],  #d0
            'tszze':[],  #z0
-           'trppt':[],  #track momentum
+           'tsppt':[],  #track state momentum
            }
     
     lti = {'trch2':[],  #chi2
            'trndf':[],  #degrees of freedom
-           'trsip':[],  #index of track states in interaction point
-           'trsfh':[],  #first hit index
-           'trslh':[],  #last hit index
-           'trsca':[],  #calorimeter hit index
+           'trsip':[],  #Index of track state (ts branches) at interaction point
+           'trsfh':[],  #Index of track state (ts branches) at the first hit
+           'trslh':[],  #Index of track state (ts branches) at the last hit
+           'trsca':[],  #Index of track state (ts branches) at the calorimeter
+           'tr2mcf':[], #Track index from tr branches.
+           'tr2mct':[], #To matched MC particle in mc branches
            }
 """
 
@@ -42,22 +44,23 @@ class bunch:
         self.rf = sys['rf']
         self.trsip = self.lti['trsip']
         self.events = []
-        self.match_tracks()
-    
-    @staticmethod
-    def find_minimum(arg1,arg2):
-          cross_prod = ak.cartesian([arg1,arg2])
-          a,b = ak.unzip(cross_prod)
-          dif = np.abs(a-b)
-          return ak.min(dif), dif      
+        self.match_tracks()   
     
     def match_tracks(self):
-        ppt_min, ppt_dif = self.find_minimum(self.ltr['trppt'],self.log['mcppt'])
-        phi_min, phi_dif = self.find_minimum(self.ltr['tsphi'][self.trsip], self.log['mcphi'])
-        lambda_min, lambda_dif = self.find_minimum(np.arctan(self.ltr['tstnl'][self.trsip]), self.log['mclambda'])
+        tr2mcf = self.lti['tr2mcf']
+        tr2mct = self.lti['tr2mct']
         
-        self.dif = {'dif_ppt':ppt_dif, 'dif_phi':phi_dif, 'dif_lambda':lambda_dif}
+        tsphi = self.ltr['tsphi'][tr2mcf]
+        tsl = np.arctan(self.ltr['tstnl'][tr2mcf])
+        tsppt = self.ltr['trppt'][tr2mcf]
         
+        mcppt = self.log['mcppt'][tr2mct]
+        mcphi = self.log['mcphi'][tr2mct]
+        mcl = self.log['mcl'][tr2mct]
+        
+        self.dif = {'dif_ppt':mcppt-tsppt,'dif_lambda':mcl-tsl,'dif-phi':mcphi-tsphi}
+        
+        self.plot_bunch({'dif_ppt':None,'dif_lambda':None, 'dif_phi':None}, maximum=1)
     
     def plot_bunch(self, args, maximum):
         for arg in args.keys():
@@ -85,14 +88,22 @@ class bunch:
             plt.yscale('log')
             plt.xlabel(xlabel)
             plt.show()
+            
+    """
+    @staticmethod
+    def find_minimum(arg1,arg2):
+          cross_prod = ak.cartesian([arg1,arg2])
+          a,b = ak.unzip(cross_prod)
+          dif = np.abs(a-b)
+          return ak.min(dif), dif   
+    """
 
-def assign_bunches(folder_path, max_bunches=10, step=1):
-    mlkth = multi_lkth(folder_path, max_events=max_bunches, step=step)
+def assign_bunches(folder_path, max_events=1, step=1):
+    mlkth = multi_lkth(folder_path, max_events=max_events, step=step)
     bunches = []
     for i in mlkth:
         bunches.append(bunch(i))
         
     return bunches
 
-bunches = assign_bunches('/home/kali/sim/data', step=1, max_bunches=1)
-bunches[0].plot_bunch({'dif_ppt':None,'dif_lambda':None, 'dif_phi':None}, maximum=1)
+bunches = assign_bunches('/home/kali/sim/data')
