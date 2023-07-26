@@ -1,30 +1,17 @@
-import numpy as np
 import graph_nets as gn
 import tensorflow as tf
-import itertools
+import numpy as np
 
 def format_graph(system):
     """
     Takes the system and formats it into a graph_net compatible dictionary
     """
-    globals_ = system.globals
-    #chi2, ndf
-    nodes = system.nodes
     
-    #pt, tanlambda, phi, d0, z0, cov, time_of_flight
-    edges = [[]]*system.len
-    
-    i=itertools.product(range(nodes.shape[0]),range(nodes.shape[0]))
-    senders=[]
-    receivers=[]
-    for s,r in i:
-        if s==r: continue
-        senders.append(s)
-        receivers.append(r)
-    edges=[[]]*len(senders)
-    
-    return {'globals':globals_, 'nodes':nodes, 'edges':edges, 'senders':senders, 
-            'receivers':receivers}
+    return {'globals':tf.convert_to_tensor(system.globals), 
+            'nodes':tf.convert_to_tensor(system.nodes), 
+            'edges':tf.convert_to_tensor(system.edges), 
+            'senders':tf.convert_to_tensor(system.senders), 
+            'receivers':tf.convert_to_tensor(system.receivers)}
 
 def format_graphs(dgraphs):
     """
@@ -35,10 +22,15 @@ def format_graphs(dgraphs):
 
 def formatter(samples):
     dgraphs = []
-    
+    labels = None
     for i in samples:
         dgraphs.append(format_graph(i)) 
-                
-    dgraphs = format_graphs(dgraphs)
+        if labels is None:
+            labels = i.labels
+        else:
+            labels = np.concatenate((labels,i.labels))
     
-    return {'dgraphs':dgraphs}
+    dgraphs = format_graphs(dgraphs)
+    print(dgraphs)
+    
+    return {'dgraphs':dgraphs, 'sys':samples, 'labels':labels}
