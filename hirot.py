@@ -1,16 +1,15 @@
 import uproot
 import numpy as np
-import pandas as pd
 import awkward as ak
 import os
 
 folder_path_input = '/home/kali/sim/data'
 path_input = "~/sim/lct_BIB.root"
 
-lam_max = 75/360 * 2*np.pi
 
 
-def multi_lkth(folder_path, max_events=1, step=1):
+
+def multi_lkth(folder_path, max_events=1, step=1, track_perf=False):
     """
     Loops over all LCTuple files and retrieves its data
     
@@ -30,18 +29,26 @@ def multi_lkth(folder_path, max_events=1, step=1):
     """
     multi_log = []
     num = 0
+    
     for file in os.listdir(folder_path):
+        print(file)
         path = f'{folder_path}/{file}'
-        #retrieves all keys in a root file and finds those labelled MYLCTuple.
-        trees = [k for k in uproot.open(path).keys() if k.startswith('MyLCTuple')]
-        for ttree in trees:
-            for lctuple in uproot.iterate({f'{path}':ttree}, step_size=step):
-                if num<max_events:
-                    num+=1
-                    multi_log.append(lkth(lctuple))
-                else:
-                    return multi_log
+        trees = []
+        
+        if not track_perf:
+            trees = [k for k in uproot.open(path).keys() if k.startswith('MyLCTuple')]
+        else:
+            super_trees = uproot.open(path).keys()
+            trees = [k for k in super_trees if 'MyOutput' in k]
             
+            for ttree in trees:
+                for lctuple in uproot.iterate({f'{path}':ttree}, step_size=step):
+                    if num<max_events:
+                        num+=1
+                        multi_log.append(lkth(lctuple))
+                    else:
+                        return multi_log
+        
     return multi_log
 
 def lkth(lctuple):
@@ -86,8 +93,8 @@ def lkth(lctuple):
            'trsfh':[],  #Index of track state (ts branches) at the first hit
            'trslh':[],  #Index of track state (ts branches) at the last hit
            'trsca':[],  #Index of track state (ts branches) at the calorimeter
-           'tr2mcf':[], #Track index from tr branches.
-           'tr2mct':[], #To matched MC particle in mc branches
+           'mc2trf':[], #Track index from tr branches.
+           'mc2trt':[], #To matched MC particle in mc branches
            }
     
     #'tof':[],    #time of flight
@@ -95,40 +102,19 @@ def lkth(lctuple):
     rf = 0
     
     for i in log:
-        params = lctuple[i]
-        log[i] = params
+        log[i] = lctuple[i]
     
     #parameters['p'] = pp
     
     #Track Parameters
     
     for i in ltr:
-        params = lctuple[i]
-        ltr[i] = params
-        
-    omega = ltr['tsome']
+        ltr[i] = lctuple[i]
     
     #Track Information Parameters
     for i in lti:       
-        params = lctuple[i]
-        lti[i] = params
-        
-    trsip = lti['trsip']
-    
-    covariance = lctuple['tscov'] #covariance matrix  
-    
-    #calculations  
-    gen = log['mcgst']
-    cha = log['mccha']
-    
-    #selection that particles must be stable and must not have neutral charge
-    pre = (gen==1) & (cha!=0)
-    
-    rf = ak.count(pre[pre])
-    
-    for i in log:
-        log[i] = log[i][pre]
-    
+        lti[i] = lctuple[i]
+
     mx = log['mcmox']
     my = log['mcmoy']
     mz = log['mcmoz']
@@ -136,9 +122,16 @@ def lkth(lctuple):
     #updates the dictionary with additional arrays of important variables
 
     log.update({'mcppt':ak.Array(np.sqrt(mx**2 + my**2 + mz**2))})
-    log.update({'mcl':np.arctan2(mz,log['mcppt'])})
+    log.update({'mclam':np.arctan2(mz,log['mcppt'])})
     log.update({'mcphi':np.arctan2(my,mx)})
     
+    omega = ltr['tsome']
     ltr.update({'tsppt':(.3 * 3.57)/(omega)})
-    
-    return {'log':log,'ltr':ltr,'lti':lti,'cov':covariance,'rf':rf}
+    """
+    cov = lctuple['tscov'][0]
+    for i, uc in enumerate(cov[0]):
+        l = ak.values_astype([cov[:,i]],'float32')
+        ltr.update({f'cov{i}':l})
+        print(i)
+    """
+    return {'log':log,'ltr':ltr,'lti':lti,'rf':rf}
