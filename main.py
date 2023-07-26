@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import networkx as nx
 from matplotlib import pyplot as plt
 
 import graph_nets as gn
@@ -9,48 +8,36 @@ import tensorflow as tf
 import tqdm
 
 from formatter import formatter
-import nodal 
 from graphs import INModel
-
-#train
-#find loss via algorithm. (how much neural network graph deviates from truth path)
-#optimize
-#test
+from bunch import bunch
 
 class training:
     def __init__(self, model):
         self.model = model
         
         self.stat = pd.DataFrame(columns=['train_loss','test_loss'])
-        self.opt = snt.optimizers.Adam(learning_rate=0.01)
+        self.opt = snt.optimizers.Adam(learning_rate=0.001)
         
     def step(self, gr_train, gr_test=None):
         test_loss=0
         if gr_test is not None:
             pred = self.model(gr_test)
-            logits = pred.edges
+            logits = pred.nodes
             labels = gr_train['labels']
             loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+            loss = tf.reduce_mean(loss)
             
             test_loss = tf.reduce_mean(loss)
             
         with tf.GradientTape() as tape:
-            pred = self.model(gr_train)
-            #print(pred)       
-            logits=pred.edges
+            pred = self.model(gr_train)     
+            logits=pred.nodes
             labels = gr_train['labels']
-            #labels = [[0., 1],[1.,0.],[0.,1.],[0.,1.]] 
             
-            #print(logits)
-            print(labels)
-            
-            #loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
-            #loss = tf.reduce_mean(loss)
-            loss = tf.keras.losses.categorical_crossentropy(y_true = labels, y_pred=logits, from_logits=True)
+            loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
             loss = tf.reduce_mean(loss)
             
             logits = tf.nn.softmax(logits)
-            print(logits)
             
         
         params = self.model.trainable_variables
@@ -67,9 +54,11 @@ class training:
 
 model = INModel()
 t = training(model)
-epochs = 100
+epochs = 10
 
-gr_train = formatter(10, truth_value = True)
+samples = bunch.trackPerf_to_bunch('/home/kali/sim/data')
+
+gr_train = formatter(samples)
 #gr_test = formatter(2, truth_value = True)
 
 fig_s,ax_s=plt.subplots(ncols=3, figsize=(24,8))
