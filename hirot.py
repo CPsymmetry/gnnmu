@@ -6,9 +6,6 @@ import os
 folder_path_input = '/home/kali/sim/data'
 path_input = "~/sim/lct_BIB.root"
 
-
-
-
 def multi_lkth(folder_path, max_events=1, step=1, track_perf=False):
     """
     Loops over all LCTuple files and retrieves its data
@@ -127,11 +124,8 @@ def lkth(lctuple):
     
     omega = ltr['tsome']
     ltr.update({'tsppt':(.3 * 3.57)/(omega)})
-    """
-    cov = lctuple['tscov'][0]
-    for i, uc in enumerate(cov[0]):
-        l = ak.values_astype([cov[:,i]],'float32')
-        ltr.update({f'cov{i}':l})
-        print(i)
-    """
+    
+    for i in range(15):
+        ltr.update({f'cov{i}':lctuple['tscov'][:,:,i]})
+        
     return {'log':log,'ltr':ltr,'lti':lti,'rf':rf}
