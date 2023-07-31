@@ -19,7 +19,7 @@ def multi_lkth(folder_path, max_events=1, step=1, track_perf=False):
     step : int, optional
         The step size for looping over chunks of data. The default is 1.
     track_perf: boolean, optional
-        Whether a track_perf will be used as the input. The default is 1.
+        Whether a track_perf will be used as the input. The default is False.
     
     Returns
     -------
