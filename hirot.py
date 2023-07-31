@@ -18,7 +18,9 @@ def multi_lkth(folder_path, max_events=1, step=1, track_perf=False):
         the max number of events to load through. The default is 1.
     step : int, optional
         The step size for looping over chunks of data. The default is 1.
-
+    track_perf: boolean, optional
+        Whether a track_perf will be used as the input. The default is 1.
+    
     Returns
     -------
     multi_log : list
