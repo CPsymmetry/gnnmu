@@ -44,39 +44,51 @@ class bunch:
         self.ltr = sys['ltr']
         self.lti = sys['lti']
         self.rf = sys['rf']
-        print(len(self.lti['trndf'][0]))
-        print(len(self.ltr['tstnl'][0]))
+        #print(len(self.lti['trndf'][0]))
+        #print(len(self.ltr['tstnl'][0]))
         self.ltg = {'trch2':ak.flatten(sys['lti']['trch2']),
                     'trndf':ak.flatten(sys['lti']['trndf'])}
         self.events = pd.DataFrame([])
         
     def graphs_net_setup(self):
-        mc2trt = self.lti['mc2trt'][0]
-        mc2trf = self.lti['mc2trf'][0]
+        mc2trt = ak.flatten(self.lti['mc2trt'])
+        mc2trf = ak.flatten(self.lti['mc2trf'])
         
-        self.globals = ak.to_numpy(ak.zip(self.ltg.values())).view(('<f4',2))
-        self.nodes = ak.to_numpy(ak.zip(self.ltr.values())).view(('<f4',6))[0]
-        #self.globals = self.nodes
-        self.senders = ak.to_numpy(ak.concatenate([*self.lti['trsip'],*self.lti['trsfh'],*self.lti['trslh']]))
-        self.receivers = ak.to_numpy(ak.concatenate([*self.lti['trsfh'],*self.lti['trslh'],*self.lti['trslh']]))
-        self.edges = np.array([[]]*len(self.senders))
+        trsip = ak.flatten(self.lti['trsip'])
+        trsfh = ak.flatten(self.lti['trsfh'])
+        trslh = ak.flatten(self.lti['trslh'])
+        
+        #self.senders = ak.to_numpy(ak.concatenate([trsip,trsfh]))
+        #self.receivers = ak.to_numpy(ak.concatenate([trsfh,trslh]))
+        
+        self.senders = [[0,0],[0,1]]
+        self.receivers = [[0,1],[0,2]]
+        
+        self.edges = np.array([[],[]])
+        
+        glob = ak.to_numpy(ak.zip(self.ltg.values()))
+        nodes = ak.to_numpy(ak.zip(self.ltr.values()))
+        
+        glob = glob.view(('<f4',len(glob.dtype.names)))
+        nodes = nodes.view(('<f4',len(nodes.dtype.names)))[0]
+        
+        ip = nodes[trsip]
+        fh = nodes[trsfh]
+        lh = nodes[trslh]
+        nodes = np.transpose(np.dstack((ip,fh,lh)),(0,2,1))
+        
+        self.globals = glob
+        self.nodes = nodes
         
         self.labels = np.array([[0.,1.]]*len(self.globals))
         
-        trsip = self.lti['trsip']
-        inter,n1,n2 = np.intersect1d(ak.flatten(trsip),mc2trt, return_indices=True)
+        #Finds matching values in trsip and mc2trt
+        inter,n1,n2 = np.intersect1d(trsip,mc2trt, return_indices=True)
+        print(inter)
+        print(mc2trf[n2])
         self.labels[mc2trf[n2]] = [1.,0.]
         
-        """
-        print(self.globals)
-        print(self.nodes)
-        print(self.senders)
-        print(self.receivers)
-        print(self.edges)
-        """
-    
-    
-    
+    """
     def match_tracks(self, selection = True):
         mc2trt = self.lti['mc2trt']
         mc2trf = self.lti['mc2trf']
@@ -100,7 +112,7 @@ class bunch:
         for x in track_info:
             col = track_info[x]
             self.events[col] = ak.flatten(self.lti[x][mc2trt][pre])
-        
+    """  
     def plot_bunch(self, labels, globels={}, bunches=None):
         
         bunches = self or bunches        
@@ -155,29 +167,36 @@ class bunch:
             plt.show()
      
     @staticmethod
-    def assign_bunches(folder_path, max_events=1, step=1):
+    def assign_bunches(folder_path, max_events=1, step=1, track_perf=False):
+        """
+        Creates bunch objects
+        
+        Parameters
+        ----------
+        folder_path : TYPE
+            DESCRIPTION.
+        max_events : int, optional
+            the max number of events to load through.. The default is 1.
+        step : int, optional
+            The step size for looping over chunks of data. The default is 1.
+        track_perf: boolean, optional
+            Whether a track_perf will be used as the input. The default is False.
+
+        Returns
+        -------
+        bunches : array
+            array of bunch objects.
+        """
         mlkth = multi_lkth(folder_path, max_events=max_events, step=step)
         bunches = []
         for i in mlkth:
             bunches.append(bunch(i))
             
         return bunches
-    
-    @staticmethod 
-    def trackPerf_to_bunch(folder_path, max_events=1, step=1):
-        mlkth = multi_lkth(folder_path, max_events=max_events, step=step, track_perf=True)
-        bunches = []
-        for i in mlkth:
-            bun = bunch(i)
-            bunches.append(bun)
-            bun.match_tracks()
-            bun.graphs_net_setup()
-            
-        return bunches
 
 
 if __name__ == '__main__': 
-    samples = bunch.trackPerf_to_bunch('/home/kali/sim/data')
+    samples = bunch.assign_bunches('/home/kali/sim/data', track_perf=True)
 
     """
     bunches[0].plot_bunch(labels = 
