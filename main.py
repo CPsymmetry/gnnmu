@@ -10,16 +10,44 @@ import tqdm
 from formatter import formatter
 from graphs import INModel
 from bunch import bunch
+#import analysis
 
 class training:
     def __init__(self, model):
         self.model = model
-        
+        #training parameters
+        self.settings = {
+        'drop':.94,             #drop of learning rate
+        'epoch_drop':2,         #number of epochs that pass before learning rate is dropped
+        'initial_rate':.01,   #initial learning rate
+        }
+        self.rate = []
+        self.logits = []
+        self.labels = []
         self.stat = pd.DataFrame(columns=['train_loss','test_loss'])
-        self.opt = snt.optimizers.Adam(learning_rate=0.001)
+        #Adam optimizer
+        self.opt = snt.optimizers.Adam(learning_rate=self.settings['initial_rate'])
+        #self.opt.beta1 = self.settings['beta1']
+        #self.opt.beta2 = self.settings['beta2']
         
-    def step(self, gr_train, gr_test=None):
+        
+    def step(self, epoch, gr_train, gr_test=None):
+        """
+        Parameters
+        ----------
+        epoch : int
+            The current epoch
+        gr_train : {'dgraphs':[],'labels':[],'systems':[]}
+            training set to be inputted into the gnn model
+        gr_test : {'dgraphs':[],'labels':[],'systems':[]}, optional
+            test set
+        Returns
+        -------
+        loss : array
+            losses
+        """
         test_loss=0
+        self.opt.learning_rate=self.step_loss(epoch)
         if gr_test is not None:
             pred = self.model(gr_test)
             logits = pred.nodes
@@ -31,8 +59,10 @@ class training:
             
         with tf.GradientTape() as tape:
             pred = self.model(gr_train)     
-            logits=pred.nodes
+            logits=pred.globals
             labels = gr_train['labels']
+            self.labels=labels
+            self.logits = logits
             
             loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
             loss = tf.reduce_mean(loss)
@@ -49,28 +79,31 @@ class training:
         
         return loss
     
-    
+    def step_loss(self, epoch):
+        """
+        Reduces the optimizers learning rate as epochs increases
+        """
+        loss=self.settings['initial_rate']*np.power(self.settings['drop'],np.floor((1+epoch)/self.settings['epoch_drop']))
+        self.rate.append(loss)
+        return loss
+
+
+
 ##################MAIN#####################
 
 model = INModel()
 t = training(model)
-epochs = 10
+epochs = 1
 
+#samples to be formatted
 samples = bunch.trackPerf_to_bunch('/home/kali/sim/data')
 
+#training and testing sets are set up
 gr_train = formatter(samples)
-#gr_test = formatter(2, truth_value = True)
-
-fig_s,ax_s=plt.subplots(ncols=3, figsize=(24,8))
-fig_t,ax_t=plt.subplots(figsize=(8,8))
+gr_test =  gr_train
 
 for epoch in tqdm.trange(epochs):
-    loss=float(t.step(gr_train))#, gr_test))
-    
-# Plot the status of the training
-ax_t.clear()
-ax_t.plot(t.stat.train_loss.tolist(),label='Training')
-ax_t.set_yscale('log')
-ax_t.set_ylabel('loss')
-ax_t.set_xlabel('epoch')
-ax_t.legend()
+    loss=float(t.step(epoch, gr_train))#, gr_test))
+
+#analysis.loss_over_time(t)
+#analysis.identification_efficiency(t)
