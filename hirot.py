@@ -15,7 +15,7 @@ def multi_lkth(folder_path, max_events=1, step=1, track_perf=False):
     folder_path : string
         path to the folder containing all the files.
     max_events : int, optional
-        the max number of events to load through. The default is 10.
+        the max number of events to load through. The default is 1.
     step : int, optional
         The step size for looping over chunks of data. The default is 1.
 
