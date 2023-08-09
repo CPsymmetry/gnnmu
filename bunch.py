@@ -58,11 +58,8 @@ class bunch:
         trsfh = ak.flatten(self.lti['trsfh'])
         trslh = ak.flatten(self.lti['trslh'])
         
-        #self.senders = ak.to_numpy(ak.concatenate([trsip,trsfh]))
-        #self.receivers = ak.to_numpy(ak.concatenate([trsfh,trslh]))
-        
-        self.senders = [[0,0],[0,1]]
-        self.receivers = [[0,1],[0,2]]
+        self.senders = [0,1]
+        self.receivers = [1,2]
         
         self.edges = np.array([[],[]])
         
@@ -83,36 +80,16 @@ class bunch:
         self.labels = np.array([[0.,1.]]*len(self.globals))
         
         #Finds matching values in trsip and mc2trt
-        inter,n1,n2 = np.intersect1d(trsip,mc2trt, return_indices=True)
-        print(inter)
-        print(mc2trf[n2])
-        self.labels[mc2trf[n2]] = [1.,0.]
+        inter,n1,n2 = np.intersect1d(np.arange(len(trsip)),mc2trt, return_indices=True)
+        self.truth_indexes = n1
+        self.labels[self.truth_indexes] = [1.,0.]
+        """
+        print(nodes[self.truth_indexes])
+        pre = np.abs(nodes[self.truth_indexes]) < np.tan(lam_max)
+        print(np.arctan(nodes[self.truth_indexes][:,:,0]))
+        print( np.tan(lam_max))
+        """
         
-    """
-    def match_tracks(self, selection = True):
-        mc2trt = self.lti['mc2trt']
-        mc2trf = self.lti['mc2trf']
-        
-        track_state_info = {'tsppt':'ppt','tsphi':'phi','tstnl':'lam','tsome':'omega','tsdze':'d0','tszze':'z0'}
-        track_info = {'trch2':'ch2','trndf':'ndf'}
-        
-        pre = self.log['mcgst'][mc2trf] != None
-        
-        if selection:
-            gen = self.log['mcgst'][mc2trf]
-            cha = self.log['mccha'][mc2trf]
-            lam = self.log['mclam'][mc2trf]
-        #selection that particles must be stable and must not have neutral charge + lambda < 75 degrees
-            pre = (gen==1) & (cha!=0) & (lam<lam_max)  
-        
-        for x in track_state_info:
-            col = track_state_info[x]
-            self.events[col] = ak.flatten(self.ltr[x][mc2trt][pre])
-            
-        for x in track_info:
-            col = track_info[x]
-            self.events[col] = ak.flatten(self.lti[x][mc2trt][pre])
-    """  
     def plot_bunch(self, labels, globels={}, bunches=None):
         
         bunches = self or bunches        
@@ -169,8 +146,6 @@ class bunch:
     @staticmethod
     def assign_bunches(folder_path, max_events=1, step=1, track_perf=False):
         """
-        Creates bunch objects
-        
         Parameters
         ----------
         folder_path : TYPE
@@ -179,30 +154,29 @@ class bunch:
             the max number of events to load through.. The default is 1.
         step : int, optional
             The step size for looping over chunks of data. The default is 1.
-        track_perf: boolean, optional
-            Whether a track_perf will be used as the input. The default is False.
 
         Returns
         -------
-        bunches : array
-            array of bunch objects.
+        bunches : TYPE
+            DESCRIPTION.
+
         """
-        mlkth = multi_lkth(folder_path, max_events=max_events, step=step)
+        mlkth = multi_lkth(folder_path, max_events=max_events, step=step, track_perf=track_perf)
         bunches = []
         for i in mlkth:
-            bunches.append(bunch(i))
+            bun = bunch(i)
+            bunches.append(bun)
+            bun.graphs_net_setup()
             
         return bunches
 
-
 if __name__ == '__main__': 
-    samples = bunch.assign_bunches('/home/kali/sim/data', track_perf=True)
-
-    """
-    bunches[0].plot_bunch(labels = 
-                          {'ppt':{'xlabel':'true - reconstructed $p_T$ [MeV]'},
+    samples = bunch.trackPerf_to_bunch('/home/kali/sim/data')
+"""
+    samples[0].plot_bunch(labels = 
+                          {'tsppt':{'xlabel':'true - reconstructed $p_T$ [MeV]'},
                            'lambda':{'xlabel':'true - reconstructed lambda [radians]'}, 
                            'phi':{'xlabel':'true - reconstructed phi [radians]'}
                            }, 
                           globels = {'range':(-1,1), 'ylabel':'count', 'bins':100})
-    """
+"""
