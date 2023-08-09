@@ -21,7 +21,7 @@ def format_graphs(dgraphs):
     """
     return gn.utils_tf.data_dicts_to_graphs_tuple(dgraphs)
 
-def formatter(samples, sample_size=1, graph_size=1):
+def formatter(samples, sample_size=100):
     """
     Formats the data into GraphTuples for the GNN
     
@@ -41,45 +41,47 @@ def formatter(samples, sample_size=1, graph_size=1):
 
    """
     dgraphs = []
+    labels = np.empty((0,2),dtype=float)
     n = 0   #num. of tracks added
     
     for v in samples:
-        ng = 0
-        ns = 0
         senders = v.senders
         receivers = v.receivers
         arg_len = len(v.globals)
+        truth_len = len(v.truth_indexes)
         
-        for i in np.arange((sample_size)/graph_size):
-            difng = (graph_size+ns)-arg_len
-            print()
-            edges = np.array([[0],[1]])*graph_size
-            
-            labels = np.empty((0,2),dtype=float)
-            nodes = np.empty((0,3,21),dtype=float)
-            glob = np.empty((0,2),dtype=float)
-            
+        ns = 0
+        p = -1
+        i = 0
+        
+        for i in np.arange(sample_size):
+            difng = (1+ns)-arg_len
+             
             if difng < 0:
-                ran = np.arange(ns, (graph_size+ns))  
+                edges = np.array([[],[]])
                 
-                labels = np.append(labels,v.labels[ran],axis=0)
-                nodes = np.append(nodes,v.nodes[ran],axis=0)
-                glob = np.append(glob,v.globals[ran],axis=0)
+                nodes = np.empty((0,21),dtype=float)
+                glob = np.empty((0),dtype=float)
                 
-                ng+=graph_size
-                ns+=ng
-                n+=ng  
-                print(f'n:{n},  ns:{ns}')
-                print(glob)
-                print(nodes)
-                print(labels)
+                index = [ns]
+                p=p*-1
+                if p == 1 and i < truth_len:
+                   index =  [v.truth_indexes[i]]
+                   i+=1
+                
+                labels = np.append(labels,v.labels[index],axis=0)
+                nodes = np.append(nodes,*v.nodes[index],axis=0)
+                glob = np.append(glob,*v.globals[index],axis=0)
+                
+                ns+=1
+                n+=1
                 
                 dgraphs.append(format_graph(glob, nodes, edges, senders, receivers)) 
+                
             else:
                 break
-            
-        
-    print(dgraphs)   
+      
     dgraphs = format_graphs(dgraphs)
+    print(dgraphs) 
     
     return {'dgraphs':dgraphs, 'sys':samples, 'labels':labels}
