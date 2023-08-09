@@ -10,16 +10,16 @@ import tqdm
 from formatter import formatter
 from graphs import INModel
 from bunch import bunch
-#import analysis
+import analysis
 
 class training:
     def __init__(self, model):
         self.model = model
         #training parameters
         self.settings = {
-        'drop':.94,             #drop of learning rate
+        'drop':.985,             #drop of learning rate
         'epoch_drop':2,         #number of epochs that pass before learning rate is dropped
-        'initial_rate':.01,   #initial learning rate
+        'initial_rate':.0105,   #initial learning rate
         }
         self.rate = []
         self.logits = []
@@ -50,26 +50,27 @@ class training:
         self.opt.learning_rate=self.step_loss(epoch)
         if gr_test is not None:
             pred = self.model(gr_test)
-            logits = pred.nodes
+            logits = pred.globals
             labels = gr_train['labels']
-            loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
-            loss = tf.reduce_mean(loss)
+            test_loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+            test_loss = tf.reduce_mean(test_loss)
             
-            test_loss = tf.reduce_mean(loss)
+            logits = tf.nn.softmax(logits)
+            self.test_logits = logits
             
         with tf.GradientTape() as tape:
             pred = self.model(gr_train)     
             logits=pred.globals
             labels = gr_train['labels']
             self.labels=labels
-            self.logits = logits
+            
             
             loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
             loss = tf.reduce_mean(loss)
             
             logits = tf.nn.softmax(logits)
+            self.logits = logits
             
-        
         params = self.model.trainable_variables
         grads = tape.gradient(loss, params)
         self.opt.apply(grads, params)
@@ -93,17 +94,22 @@ class training:
 
 model = INModel()
 t = training(model)
-epochs = 1
+epochs = 150
 
 #samples to be formatted
-samples = bunch.trackPerf_to_bunch('/home/kali/sim/data')
+samples = bunch.assign_bunches('/home/kali/sim/data',max_events=2, track_perf=True)
+
+print(samples)
+
+training_samples = [samples[0]]
+testing_samples = [samples[1]]
 
 #training and testing sets are set up
-gr_train = formatter(samples)
-gr_test =  gr_train
+gr_train = formatter(training_samples)
+gr_test =  formatter(testing_samples)
 
 for epoch in tqdm.trange(epochs):
-    loss=float(t.step(epoch, gr_train))#, gr_test))
+    loss=float(t.step(epoch, gr_train, gr_test))
 
-#analysis.loss_over_time(t)
-#analysis.identification_efficiency(t)
+analysis.loss_over_time(t)
+analysis.identification_efficiency(t)
