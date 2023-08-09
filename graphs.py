@@ -13,7 +13,7 @@ class INModel(snt.Module):
         
         self.gn_module = gn.modules.GraphNetwork(
            edge_model_fn=lambda: snt.nets.MLP([size,0]),
-           node_model_fn=lambda: snt.nets.MLP([size,0]),
+           node_model_fn=lambda: snt.nets.MLP([size,21]),
            global_model_fn=lambda: snt.nets.MLP([size,2])        
            )          
        
